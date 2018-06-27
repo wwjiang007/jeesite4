@@ -194,6 +194,9 @@ public class ExcelImport {
 	 */
 	public Row getRow(int rownum){
 		Row row = this.sheet.getRow(rownum);
+		if (row == null){
+			return null;
+		}
 		// 验证是否是空行，如果空行返回null
 		short cellNum = 0;
 		short emptyNum = 0;
@@ -254,11 +257,15 @@ public class ExcelImport {
 				if (cell.getCellType() == Cell.CELL_TYPE_NUMERIC){
 					val = cell.getNumericCellValue();
 					if (HSSFDateUtil.isCellDateFormatted(cell)) {
-				        val = DateUtil.getJavaDate((Double)val); // POI Excel 日期格式转换
-				    }else{
-				    	val = new DecimalFormat("0").format(val);
-				    }
-				}else if (cell.getCellType() == Cell.CELL_TYPE_STRING){
+						val = DateUtil.getJavaDate((Double) val); // POI Excel 日期格式转换
+					}else{
+						if ((Double) val % 1 > 0){
+							val = new DecimalFormat("0.00").format(val);
+						}else{
+							val = new DecimalFormat("0").format(val);
+						}
+					}
+				}else if (cell.getCellType() == Cell.CELL_TYPE_STRING) {
 					val = cell.getStringCellValue();
 				}else if (cell.getCellType() == Cell.CELL_TYPE_FORMULA){
 					try {
@@ -387,7 +394,7 @@ public class ExcelImport {
 						try{
 							Class<?> dictUtils = Class.forName("com.jeesite.modules.sys.utils.DictUtils");
 							val = dictUtils.getMethod("getDictValue", String.class, String.class,
-										String.class).invoke(null, val.toString(), ef.dictType(), "");
+										String.class).invoke(null, ef.dictType(), val.toString(), "");
 						} catch (Exception ex) {
 							log.info("Get cell value ["+i+","+column+"] error: " + ex.toString());
 							val = null;
@@ -409,33 +416,41 @@ public class ExcelImport {
 					}
 					//log.debug("Import value type: ["+i+","+column+"] " + valType);
 					try {
-						if (valType == String.class){
-							String s = String.valueOf(val.toString());
-							if(StringUtils.endsWith(s, ".0")){
-								val = StringUtils.substringBefore(s, ".0");
-							}else{
-								val = String.valueOf(val.toString());
-							}
-						}else if (valType == Integer.class){
-							val = Double.valueOf(val.toString()).intValue();
-						}else if (valType == Long.class){
-							val = Double.valueOf(val.toString()).longValue();
-						}else if (valType == Double.class){
-							val = Double.valueOf(val.toString());
-						}else if (valType == Float.class){
-							val = Float.valueOf(val.toString());
-						}else if (valType == Date.class){
-							if (val instanceof String){
-								val = DateUtils.parseDate(val);
-							}else if (val instanceof Double){
-								val = DateUtil.getJavaDate((Double)val); // POI Excel 日期格式转换
+						if (StringUtils.isNotBlank(ef.attrName())){
+							if (ef.fieldType() != Class.class){
+								val = ef.fieldType().getMethod("getValue", String.class).invoke(null, val);
 							}
 						}else{
-							if (ef.fieldType() != Class.class){
-								val = ef.fieldType().getMethod("getValue", String.class).invoke(null, val.toString());
-							}else{
-								val = Class.forName(this.getClass().getName().replaceAll(this.getClass().getSimpleName(), 
-										"fieldtype."+valType.getSimpleName()+"Type")).getMethod("getValue", String.class).invoke(null, val.toString());
+							if (val != null){
+								if (valType == String.class){
+									String s = String.valueOf(val.toString());
+									if(StringUtils.endsWith(s, ".0")){
+										val = StringUtils.substringBefore(s, ".0");
+									}else{
+										val = String.valueOf(val.toString());
+									}
+								}else if (valType == Integer.class){
+									val = Double.valueOf(val.toString()).intValue();
+								}else if (valType == Long.class){
+									val = Double.valueOf(val.toString()).longValue();
+								}else if (valType == Double.class){
+									val = Double.valueOf(val.toString());
+								}else if (valType == Float.class){
+									val = Float.valueOf(val.toString());
+								}else if (valType == Date.class){
+									if (val instanceof String){
+										val = DateUtils.parseDate(val);
+									}else if (val instanceof Double){
+										val = DateUtil.getJavaDate((Double)val); // POI Excel 日期格式转换
+									}
+								}else{
+									if (ef.fieldType() != Class.class){
+										val = ef.fieldType().getMethod("getValue", String.class).invoke(null, val.toString());
+									}else{
+										val = Class.forName(this.getClass().getName().replaceAll(this.getClass().getSimpleName(), 
+												"fieldtype."+valType.getSimpleName()+"Type")).getMethod("getValue", String.class).invoke(null, val.toString());
+									}
+								}
 							}
 						}
 					} catch (Exception ex) {
@@ -445,14 +460,18 @@ public class ExcelImport {
 						exceptionCallback.execute(ex, i, column);
 					}
 					// set entity value
-					if (os[1] instanceof Field){
-						ReflectUtils.invokeSetter(e, ((Field)os[1]).getName(), val);
-					}else if (os[1] instanceof Method){
-						String mthodName = ((Method)os[1]).getName();
-						if ("get".equals(mthodName.substring(0, 3))){
-							mthodName = "set"+StringUtils.substringAfter(mthodName, "get");
+					if (StringUtils.isNotBlank(ef.attrName())){
+						ReflectUtils.invokeSetter(e, ef.attrName(), val);
+					}else{
+						if (os[1] instanceof Field){
+							ReflectUtils.invokeSetter(e, ((Field)os[1]).getName(), val);
+						}else if (os[1] instanceof Method){
+							String mthodName = ((Method)os[1]).getName();
+							if ("get".equals(mthodName.substring(0, 3))){
+								mthodName = "set"+StringUtils.substringAfter(mthodName, "get");
+							}
+							ReflectUtils.invokeMethod(e, mthodName, new Class[] {valType}, new Object[] {val});
 						}
-						ReflectUtils.invokeMethod(e, mthodName, new Class[] {valType}, new Object[] {val});
 					}
 				}
 				sb.append(val+", ");
@@ -479,7 +498,7 @@ public class ExcelImport {
 //				Object val = ei.getCellValue(row, j);
 //				System.out.print(val+", ");
 //			}
-//			System.out.print("\n");
+//			System.out.println();
 //		}
 //		
 //	}

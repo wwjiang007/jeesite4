@@ -29,7 +29,7 @@ import com.jeesite.modules.sys.service.UserService;
 import com.jeesite.modules.sys.utils.UserUtils;
 
 /**
- * 集团公司管理员Controller
+ * 系统管理员Controller
  * @author ThinkGem
  * @version 2017-03-26
  */
@@ -57,9 +57,8 @@ public class CorpAdminController extends BaseController {
 	@RequestMapping(value = "listData")
 	@ResponseBody
 	public Page<User> listData(User user, HttpServletRequest request, HttpServletResponse response) {
-		user.setUserType(User.USER_TYPE_NONE);		// 仅登录用户
-		user.setMgrType(User.MGR_TYPE_CORP_ADMIN);	// 集团管理员
-		// 禁用自动添加集团代码条件，添加自定义集团查询条件
+		user.setMgrType(User.MGR_TYPE_CORP_ADMIN);	// 租户管理员
+		// 禁用自动添加租户代码条件，添加自定义租户查询条件
 		user.getSqlMap().getWhere().disableAutoAddCorpCodeWhere()
 			.and("corp_code", QueryType.EQ, user.getCorpCode_())
 			.and("corp_name", QueryType.LIKE, user.getCorpName_());
@@ -71,13 +70,13 @@ public class CorpAdminController extends BaseController {
 	@RequestMapping(value = "form")
 	public String form(User user, String op, Model model) {
 		if (user.getIsNewRecord()){
-			// 新增集团，如果已存在集团，则不能保存
+			// 新增租户管理员，如果已存在，则不能保存
 			if ("addCorp".equals(op)){
-				user.setCorpCode_(StringUtils.EMPTY);  // 归属集团Code
-				user.setCorpName_(StringUtils.EMPTY);  // 归属集团Name
+				user.setCorpCode_(StringUtils.EMPTY);  // 租户代码
+				user.setCorpName_(StringUtils.EMPTY);  // 租户名称
 			}
 		}
-		// 操作类型：addCorp: 添加集团； addAdmin: 添加管理员； edit: 编辑
+		// 操作类型：addCorp: 添加租户； addAdmin: 添加管理员； edit: 编辑
 		model.addAttribute("op", op);
 		model.addAttribute("user", user);
 		return "modules/sys/user/corpAdminForm";
@@ -97,24 +96,26 @@ public class CorpAdminController extends BaseController {
 			return renderResult(Global.FALSE, "非法操作，不能够操作此用户！");
 		}
 		if (StringUtils.isBlank(user.getCorpCode_())){
-			return renderResult(Global.FALSE, "集团编码不能为空！");
+			return renderResult(Global.FALSE, "租户代码不能为空！");
 		}
 		if (!Global.TRUE.equals(userService.checkLoginCode(oldLoginCode, user.getLoginCode()/*, user.getCorpCode_()*/))) {
 			return renderResult(Global.FALSE, "保存用户'" + user.getLoginCode() + "'失败，登录账号已存在");
 		}
-		user.setUserType(User.USER_TYPE_NONE); // 仅登录用户
-		user.setMgrType(User.MGR_TYPE_CORP_ADMIN); // 集团管理员
-		// 如果新增，则验证集团代码合法性
+		if (user.getIsNewRecord()){
+			user.setUserType(User.USER_TYPE_NONE); // 仅登录用户
+		}
+		user.setMgrType(User.MGR_TYPE_CORP_ADMIN); // 租户管理员
+		// 如果新增，则验证租户代码合法性
 		if (user.getIsNewRecord()){
 			User where = new User();
 			where.setCorpCode_(user.getCorpCode_());
-			List<User> list = userService.findCorpList(user);
+			List<User> list = userService.findCorpList(where);
 			if (list.size() > 0){
-				// 新增集团，如果已存在集团，则不能保存
+				// 新增租户，如果已存在，则不能保存
 				if ("addCorp".equals(op)){
-					return renderResult(Global.FALSE, "保存用户失败，集团编码已存在");
+					return renderResult(Global.FALSE, "保存用户失败，租户代码已存在");
 				}
-				// 新增管理员，则使用已有的集团代码和名称
+				// 新增管理员，则使用已有的租户代码和名称
 				else if ("addAdmin".equals(op)){
 					user.setCorpCode_(list.get(0).getCorpCode_());
 					user.setCorpName_(list.get(0).getCorpName_());
@@ -145,9 +146,6 @@ public class CorpAdminController extends BaseController {
 		if (User.isSuperAdmin(user.getUserCode())) {
 			return renderResult(Global.FALSE, "非法操作，不能够操作此用户！");
 		}
-		if (!User.USER_TYPE_NONE.equals(user.getUserType())){
-			return renderResult(Global.FALSE, "非法操作，不能够操作此用户！");
-		}
 		if (user.getCurrentUser().getUserCode().equals(user.getUserCode())) {
 			return renderResult(Global.FALSE, "停用用户失败, 不允许停用当前用户");
 		}
@@ -168,9 +166,6 @@ public class CorpAdminController extends BaseController {
 		if (User.isSuperAdmin(user.getUserCode())) {
 			return renderResult(Global.FALSE, "非法操作，不能够操作此用户！");
 		}
-		if (!User.USER_TYPE_NONE.equals(user.getUserType())){
-			return renderResult(Global.FALSE, "非法操作，不能够操作此用户！");
-		}
 		user.setStatus(User.STATUS_NORMAL);
 		userService.updateStatus(user);
 		return renderResult(Global.TRUE, "启用用户成功");
@@ -186,9 +181,6 @@ public class CorpAdminController extends BaseController {
 	@ResponseBody
 	public String resetpwd(User user) {
 		if (User.isSuperAdmin(user.getUserCode())) {
-			return renderResult(Global.FALSE, "非法操作，不能够操作此用户！");
-		}
-		if (!User.USER_TYPE_NONE.equals(user.getUserType())){
 			return renderResult(Global.FALSE, "非法操作，不能够操作此用户！");
 		}
 		userService.updatePassword(user.getUserCode(), null);
@@ -207,14 +199,19 @@ public class CorpAdminController extends BaseController {
 		if (User.isSuperAdmin(user.getUserCode())) {
 			return renderResult(Global.FALSE, "非法操作，不能够操作此用户！");
 		}
-		if (!User.USER_TYPE_NONE.equals(user.getUserType())){
-			return renderResult(Global.FALSE, "非法操作，不能够操作此用户！");
-		}
 		if (user.getCurrentUser().getUserCode().equals(user.getUserCode())) {
-			return renderResult(Global.FALSE, "删除用户失败, 不允许删除当前用户");
+			return renderResult(Global.FALSE, "删除用户失败，不允许删除当前用户");
 		}
-		userService.delete(user);
-		return renderResult(Global.TRUE, "删除用户'" + user.getUserName() + "'成功！");
+		if (User.USER_TYPE_NONE.equals(user.getUserType())){
+			// 删除系统管理员
+			userService.delete(user);
+			return renderResult(Global.TRUE, "删除用户'" + user.getUserName() + "'成功！");
+		}else{
+			// 取消系统管理员身份
+			user.setMgrType(User.MGR_TYPE_NOT_ADMIN);
+			userService.updateMgrType(user);
+			return renderResult(Global.TRUE, "取消用户'" + user.getUserName() + "'管理员身份成功！");
+		}
 	}
 
 }

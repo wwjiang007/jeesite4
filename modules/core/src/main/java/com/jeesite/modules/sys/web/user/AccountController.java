@@ -3,7 +3,6 @@
  */
 package com.jeesite.modules.sys.web.user;
 
-import java.lang.reflect.Method;
 import java.util.Date;
 import java.util.Map;
 
@@ -21,6 +20,8 @@ import com.jeesite.common.config.Global;
 import com.jeesite.common.lang.StringUtils;
 import com.jeesite.common.service.ServiceException;
 import com.jeesite.common.web.BaseController;
+import com.jeesite.modules.msg.entity.MsgPush;
+import com.jeesite.modules.msg.utils.MsgPushUtils;
 import com.jeesite.modules.sys.entity.User;
 import com.jeesite.modules.sys.service.UserService;
 import com.jeesite.modules.sys.utils.UserUtils;
@@ -43,6 +44,7 @@ public class AccountController extends BaseController{
 	 */
 	@RequestMapping(value = "forgetPwd")
 	public String forgetPwd(Model model) {
+		model.addAttribute("message", "正在研发中，敬请期待！");
 		return "modules/sys/account/forgetPwd";
 	}
 	
@@ -311,16 +313,12 @@ public class AccountController extends BaseController{
 		}
 		u.setLoginCode(loginCode);
 		u.setUserName(user.getUserName());
+		u.setPassword(user.getPassword());
 		u.setEmail(email);
 		u.setMobile(mobile);
 		u.setUserType(userType);
 		u.setMgrType(User.MGR_TYPE_NOT_ADMIN);
 		userService.save(u);
-		try{
-			userService.updatePassword(u.getUserCode(), user.getPassword());
-		}catch(ServiceException se){
-			return renderResult(Global.FALSE, se.getMessage());
-		}
 		
 		// 验证成功后清理验证码，验证码只允许使用一次。
 		UserUtils.removeCache("regUserType");
@@ -336,17 +334,11 @@ public class AccountController extends BaseController{
 	 */
 	private String sendEmailValidCode(User user, String code, String title){
 		try {
-			Class<?> message = Class.forName("com.jeesite.modules.msg.entity.MsgPushEntity");
-			Class<?> messageUtils = Class.forName("com.jeesite.modules.msg.utils.MessageUtils");
-			Method method = messageUtils.getMethod("sendEmail", String.class, String.class, String.class, String.class, String.class);
-			String contentTitle = user.getUserName() + "（" + user.getLoginCode() + "）"+title+"验证码";
-			String contentText = "尊敬的用户，您好!\n\n您的验证码是：" + code +"（请勿透露给其他人）\n\n"
+			title = user.getUserName() + "（" + user.getLoginCode() + "）"+title+"验证码";
+			String content = "尊敬的用户，您好!\n\n您的验证码是：" + code +"（请勿透露给其他人）\n\n"
 						+ "请复制后，填写在你的验证码窗口完成验证。\n\n本邮件由系统自动发出，请勿回复。\n\n感谢您的使用。";
-			String receiverType = (String)message.getField("RECEIVER_TYPE_NONE").get(null);
-			String receiverCodes = user.getEmail(), receiverNames = user.getUserName();
-			method.invoke(null, contentTitle, contentText, receiverType, receiverCodes, receiverNames);
-		} catch (ClassNotFoundException e) {
-			return renderResult(Global.FALSE, "消息模块未安装，请联系管理员！");
+			String receiveUserCode = "[CODE]"+user.getEmail();
+			MsgPushUtils.push(MsgPush.TYPE_EMAIL, title, content, null, null, receiveUserCode);
 		} catch (Exception e) {
 			logger.error(title+"发送邮件错误。", e);
 			return renderResult(Global.FALSE, "系统出现了点问题，错误信息：" + e.getMessage());
@@ -359,16 +351,10 @@ public class AccountController extends BaseController{
 	 */
 	private String sendSmsValidCode(User user, String code, String title){
 		try {
-			Class<?> message = Class.forName("com.jeesite.modules.msg.entity.MsgPushEntity");
-			Class<?> messageUtils = Class.forName("com.jeesite.modules.msg.utils.MessageUtils");
-			Method method = messageUtils.getMethod("sendSms", String.class, String.class, String.class, String.class, String.class);
-			String contentTitle = user.getUserName() + "（" + user.getLoginCode() + "）"+title+"验证码";
-			String contentText = "您好，您的验证码是：" + code +"（请勿透露给其他人）感谢您的使用。";
-			String receiverType = (String)message.getField("RECEIVER_TYPE_NONE").get(null);
-			String receiverCodes = user.getMobile(), receiverNames = user.getUserName();
-			method.invoke(null, contentTitle, contentText, receiverType, receiverCodes, receiverNames);
-		} catch (ClassNotFoundException e) {
-			return renderResult(Global.FALSE, "消息模块未安装，请联系管理员！");
+			title = user.getUserName() + "（" + user.getLoginCode() + "）"+title+"验证码";
+			String content = "您好，您的验证码是：" + code +"（请勿透露给其他人）感谢您的使用。";
+			String receiveUserCode = "[CODE]"+user.getMobile();
+			MsgPushUtils.push(MsgPush.TYPE_SMS, title, content, null, null, receiveUserCode);
 		} catch (Exception e) {
 			logger.error(title+"发送短信错误。", e);
 			return renderResult(Global.FALSE, "系统出现了点问题，错误信息：" + e.getMessage());

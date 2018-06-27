@@ -14,11 +14,11 @@ import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.StringEscapeUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.jeesite.common.lang.ExceptionUtils;
+import com.jeesite.common.lang.StringUtils;
 
 /**
  * 封装各种格式的编码解码工具类.
@@ -110,28 +110,28 @@ public class EncodeUtils {
 	/**
 	 * Html 转码.
 	 */
-	public static String escapeHtml(String html) {
+	public static String encodeHtml(String html) {
 		return StringEscapeUtils.escapeHtml4(html);
 	}
 
 	/**
 	 * Html 解码.
 	 */
-	public static String unescapeHtml(String htmlEscaped) {
+	public static String decodeHtml(String htmlEscaped) {
 		return StringEscapeUtils.unescapeHtml4(htmlEscaped);
 	}
 
 	/**
 	 * Xml 转码.
 	 */
-	public static String escapeXml(String xml) {
+	public static String encodeXml(String xml) {
 		return StringEscapeUtils.escapeXml10(xml);
 	}
 
 	/**
 	 * Xml 解码.
 	 */
-	public static String unescapeXml(String xmlEscaped) {
+	public static String decodeXml(String xmlEscaped) {
 		return StringEscapeUtils.unescapeXml(xmlEscaped);
 	}
 
@@ -183,7 +183,7 @@ public class EncodeUtils {
 	}
 	
 	// 预编译XSS过滤正则表达式
-	private static Pattern p1 = Pattern.compile("<\\s*(script|link|style|iframe)(.|\\n)*<\\s*\\/\\s*\\1\\s*>\\s*", Pattern.CASE_INSENSITIVE);
+	private static Pattern p1 = Pattern.compile("<\\s*(script|link|style|iframe)\\s([\\s\\S]+?)<\\/\\s*\\1\\s*>", Pattern.CASE_INSENSITIVE);
 	private static Pattern p2 = Pattern.compile("\\s*on[a-z]+\\s*=\\s*(\"[^\"]+\"|'[^']+'|[^\\s]+)\\s*(?=>)", Pattern.CASE_INSENSITIVE);
 	private static Pattern p3 = Pattern.compile("\\s*(href|src)\\s*=\\s*(\"\\s*(javascript|vbscript):[^\"]+\"|'\\s*(javascript|vbscript):[^']+'|(javascript|vbscript):[^\\s]+)\\s*(?=>)", Pattern.CASE_INSENSITIVE);
 	private static Pattern p4 = Pattern.compile("epression\\((.|\\n)*\\);?", Pattern.CASE_INSENSITIVE);
@@ -191,7 +191,7 @@ public class EncodeUtils {
 	/**
 	 * XSS 非法字符过滤
 	 * 内容以<!--HTML-->开头的用以下规则（保留标签，去掉js脚本）：
-	 * 	1、<(script|link|style|iframe)(.|\n)*<\/\1>\s* 
+	 * 	1、<\s*(script|link|style|iframe)\s([\s\S]+?)<\/\s*\1\s*>
 	 * 	2、\s*on[a-z]+\s*=\s*("[^"]+"|'[^']+'|[^\s]+)\s*(?=>) 
 	 * 	3、\s*(href|src)\s*=\s*("\s*(javascript|vbscript):[^"]+"|'\s*(javascript|vbscript):[^']+'|(javascript|vbscript):[^\s]+)\s*(?=>) 
 	 * 	4、epression\((.|\n)*\);? 

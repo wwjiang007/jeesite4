@@ -4,11 +4,11 @@
 	<modelVersion>4.0.0</modelVersion>
 	
 	<parent>
-        <groupId>com.jeesite</groupId>
-        <artifactId>jeesite-parent</artifactId>
-        <version>4.0-SNAPSHOT</version>
-        <relativePath>../parent/pom.xml</relativePath>
-    </parent>
+		<groupId>com.jeesite</groupId>
+		<artifactId>jeesite-parent</artifactId>
+		<version>4.0.4-SNAPSHOT</version>
+		<relativePath>../parent/pom.xml</relativePath>
+	</parent>
 	
 	<artifactId>jeesite-common</artifactId>
 	<packaging>jar</packaging>
@@ -49,11 +49,6 @@
 		</dependency>
 		
 		<!-- Java serialization -->
-<!-- 		<dependency> -->
-<!-- 			<groupId>com.esotericsoftware</groupId> -->
-<!-- 			<artifactId>kryo</artifactId> -->
-<!-- 			<version>${esotericsoftware-kryo.version}</version> -->
-<!-- 		</dependency> -->
 		<dependency>
 			<groupId>de.ruedigermoeller</groupId>
 			<artifactId>fst</artifactId>
@@ -166,8 +161,8 @@
 		
 		<!-- Apache HTTP -->
 		<dependency>
-		  <groupId>org.apache.httpcomponents</groupId>
-		  <artifactId>httpclient</artifactId>
+			<groupId>org.apache.httpcomponents</groupId>
+			<artifactId>httpclient</artifactId>
 		</dependency>
 		
 		<!-- Jsoup HTTP -->
