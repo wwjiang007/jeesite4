@@ -7,14 +7,14 @@ var ex;
 if (isBlank(message)){
 	ex = @ExceptionUtils.getThrowable(request);
 	if (ex != null){
-		if (@StringUtils.startsWith(ex.message, "msg:")){
-			message = @StringUtils.replace(ex.message, "msg:", "");
-		}else if (@StringUtils.startsWith(ex.cause.message, "msg:")){
-			message = @StringUtils.replace(ex.cause.message, "msg:", "");
-		}else if (ex.class.name == 'com.jeesite.common.service.ServiceException'){
-			message = ex.message;
-		}else if (ex.cause.class.name == 'com.jeesite.common.service.ServiceException'){
-			message = ex.cause.message;
+		for (e in [ex, ex.cause!, ex.cause.cause!]){
+			if (@StringUtils.startsWith(e.message!, "msg:")){
+				message = @StringUtils.replace(e.message!, "msg:", "");
+				break;
+			}else if (e.class.name! == 'com.jeesite.common.service.ServiceException'){
+				message = e.message!;
+				break;
+			}
 		}
 		@org.slf4j.LoggerFactory.getLogger("error/500").error(ex.message, ex);
 	}
@@ -43,11 +43,11 @@ else {
 			class="fa fa-reply-all"></i> ${text('sys.error.returnButton')}</button>
 	</div>
 	<div class="copyright">
-		<% var productName = @Global.getConfig('productName'), productVersion = @Global.getConfig('productVersion'); %>
-		&copy; ${@DateUtils.getYear()} ${productName} - Powered By <a href="http://jeesite.com">JeeSite</a>.
+		&copy; ${@DateUtils.getYear()} ${@Global.getConfig('productName')} - Powered By <a
+			href="http://jeesite.com">JeeSite ${@Global.getProperty('jeesiteVersion')}</a>
 	</div>
 </div>
-<% if (@ObjectUtils.toBoolean(@Global.getConfig('error.page.printErrorInfo', 'true'))){ %>
+<% if (@Global.getConfigToBoolean('error.page.printErrorInfo', 'true')){ %>
 <div class="box mt20">
 	${@StringUtils.toHtml(@ExceptionUtils.getStackTraceAsString(ex))}<br/>
 	此异常信息若不想输出，可打开jeesite.yml文件，设置error.page.printErrorInfo=false即可

@@ -29,7 +29,7 @@ import com.jeesite.modules.sys.entity.User;
 /**
  * Mapper测试
  * @author ThinkGem
- * @version 2017年2月25日
+ * @version 2018-08-11
  */
 @ActiveProfiles("test")
 @SpringBootTest(classes=ApplicationTest.class)
@@ -50,7 +50,7 @@ public class DaoMapperTest extends BaseSpringContextTests {
 	public void testTableAnnotation() throws Exception{
 		try{
 			
-			System.out.println("============ 插入、批量插入测试 ============");
+			System.out.println("============ 插入和批量插入测试 ============");
 			Config config = new Config();
 			config.setId("1");
 			config.setConfigKey("test");
@@ -64,13 +64,13 @@ public class DaoMapperTest extends BaseSpringContextTests {
 			System.out.println(configDao.insert(config));
 			System.out.println(configDao.insertBatch(ListUtils.newArrayList(config2, config3)));
 			
-			System.out.println("============ 更新、删除测试 ============");
+			System.out.println("============ 更新测试 ============");
 			Area area = new Area();
 			area.setAreaCode("1");
 			area.setAreaName("你好");
 			area.setStatus("0");
 			Area where = new Area();
-			where.setAreaCode("2");
+			where.setId("2");
 			where.setId_in(new String[]{"1","2"});
 			where.setAreaName("你好2");
 			where.setStatus("0");
@@ -78,12 +78,18 @@ public class DaoMapperTest extends BaseSpringContextTests {
 			System.out.println(areaDao.updateByEntity(area, where));
 			System.out.println(areaDao.updateStatus(area));
 			System.out.println(areaDao.updateStatusByEntity(area, where));
+			
+			System.out.println("============ 逻辑删除测试 ============");
 			System.out.println(areaDao.delete(area));
-			System.out.println(areaDao.delete(where));
-			System.out.println(areaDao.deleteByEntity(where));
-			System.out.println(areaDao.findList(area));
+			System.out.println(areaDao.delete((Area)where.clone()));
+			System.out.println(areaDao.deleteByEntity((Area)where.clone()));
+
+			System.out.println("============ 物理删除测试 ============");
+			System.out.println(areaDao.phyDelete((Area)where.clone()));
+			System.out.println(areaDao.phyDeleteByEntity((Area)where.clone()));
 
 			System.out.println("============ 基本信息查询测试 ============");
+			System.out.println(areaDao.findList(area));
 			User user = new User();
 			user.setUserType(User.USER_TYPE_NONE);
 			System.out.println(userDao.findList(user));
@@ -150,12 +156,12 @@ public class DaoMapperTest extends BaseSpringContextTests {
 				.andBracket("name", QueryType.EQ, "abc", 1).or("name", QueryType.EQ, "def", 2)
 				.or("name", QueryType.EQ, "ghi", 3).endBracket().toSql());
 		System.out.println(new Config().getSqlMap().getWhere()
-				.andBracket("name", QueryType.EQ, "val", 1)
-					.and("name", QueryType.NE, "val", 2).endBracket()
-				.orBracket("name", QueryType.NE, "val", 3)
-					.and("name", QueryType.NE, "val", 4).endBracket()
-				.orBracket("name", QueryType.NE, "val", 5)
-					.and("name", QueryType.EQ, "val", 6).endBracket().toSql());
+				.andBracket("name", QueryType.EQ, "val1", 1)
+					.and("name", QueryType.NE, "val2", 11).endBracket(1)
+				.orBracket("name", QueryType.NE, "val3", 2)
+					.and("name", QueryType.NE, "val4", 22).endBracket(2)
+				.orBracket("name", QueryType.NE, "val5", 3)
+					.and("name", QueryType.EQ, "val6", 33).endBracket(3).toSql());
 		
 		System.out.println("============ 带括号空值测试 ============");
 		System.out.println(new Config("1").getSqlMap().getWhere()
@@ -170,6 +176,9 @@ public class DaoMapperTest extends BaseSpringContextTests {
 		System.out.println(new Config("1").getSqlMap().getWhere()
 				.andBracket("name", QueryType.EQ, "", 1).or("name", QueryType.EQ, "", 2)
 				.or("name", QueryType.EQ, "", 3).endBracket().toSql());
+		System.out.println(new Config().getSqlMap().getWhere()
+				.andBracket("name", QueryType.EQ, "", 1).or("name", QueryType.EQ, "", 2)
+				.or("name", QueryType.EQ, "", 3).endBracket().toSql());
 		
 		System.out.println("============ 实体嵌套测试 ============");
 		Company company = new Company("1");
@@ -180,7 +189,6 @@ public class DaoMapperTest extends BaseSpringContextTests {
 		company.getArea().setCreateDate_gte(new Date());
 		company.getArea().setCreateDate_lte(new Date());
 		System.out.println(company.getSqlMap().getWhere().toSql());
-
 		
 	}
 }

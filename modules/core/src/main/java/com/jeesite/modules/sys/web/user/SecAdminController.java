@@ -10,6 +10,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.apache.shiro.authz.annotation.RequiresPermissions;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.annotation.Validated;
@@ -32,6 +33,7 @@ import com.jeesite.modules.sys.service.UserService;
  */
 @Controller
 @RequestMapping(value = "${adminPath}/sys/secAdmin")
+@ConditionalOnProperty(name="web.core.enabled", havingValue="true", matchIfMissing=true)
 public class SecAdminController extends BaseController {
 
 	@Autowired
@@ -84,7 +86,7 @@ public class SecAdminController extends BaseController {
 		if (!User.USER_TYPE_EMPLOYEE.equals(user.getUserType())){
 			return renderResult(Global.FALSE, "非法操作，不能够操作此用户！");
 		}
-		// 设置为二级管理员身份（必须先设置二级管理员身份，再保存管理数据权限，否则无法设置管理数据权限数据）
+		// 设置为二级管理员身份
 		user.setMgrType(User.MGR_TYPE_SEC_ADMIN);
 		userService.updateMgrType(user);
 		// 保存用户管理数据权限
@@ -107,7 +109,8 @@ public class SecAdminController extends BaseController {
 		if (!User.USER_TYPE_EMPLOYEE.equals(user.getUserType())){
 			return renderResult(Global.FALSE, "非法操作，不能够操作此用户！");
 		}
-		// 取消用户管理数据权限（必须先删除管理权限，再取消二级管理员身份，否则无法清理管理数据权限数据）
+		// 取消用户管理数据权限
+		user.setMgrType(User.MGR_TYPE_SEC_ADMIN);
 		user.setUserDataScopeListJson("[]");
 		userService.saveAuthDataScope(user);
 		// 取消二级管理员身份

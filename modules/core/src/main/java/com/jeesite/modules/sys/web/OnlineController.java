@@ -17,6 +17,7 @@ import org.apache.shiro.session.Session;
 import org.apache.shiro.subject.PrincipalCollection;
 import org.apache.shiro.subject.support.DefaultSubjectContext;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,6 +25,8 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import com.beust.jcommander.internal.Lists;
 import com.beust.jcommander.internal.Maps;
+import com.jeesite.common.cache.CacheUtils;
+import com.jeesite.common.collect.MapUtils;
 import com.jeesite.common.config.Global;
 import com.jeesite.common.lang.DateUtils;
 import com.jeesite.common.lang.ObjectUtils;
@@ -41,6 +44,7 @@ import com.jeesite.modules.sys.utils.UserUtils;
  */
 @Controller
 @RequestMapping(value = "${adminPath}/sys/online")
+@ConditionalOnProperty(name="web.core.enabled", havingValue="true", matchIfMissing=true)
 public class OnlineController extends BaseController{
 
 	@Autowired
@@ -143,6 +147,17 @@ public class OnlineController extends BaseController{
 	public String tickOut(String sessionId) {
 		Session session = sessionDAO.readSession(sessionId);
 		if (session != null){
+			@SuppressWarnings("unchecked")
+			Map<String, String> onlineTickOutMap = (Map<String, String>)CacheUtils.get("onlineTickOutMap");
+			if (onlineTickOutMap == null){
+				onlineTickOutMap = MapUtils.newConcurrentMap();
+			}
+			PrincipalCollection pc = (PrincipalCollection)session.getAttribute(DefaultSubjectContext.PRINCIPALS_SESSION_KEY);
+			LoginInfo principal = (pc != null ? (LoginInfo)pc.getPrimaryPrincipal() : null);
+			if (principal != null){
+				onlineTickOutMap.put(principal.getId()+"_"+principal.getParam("deviceType", "PC"), StringUtils.EMPTY);
+			}
+			CacheUtils.put("onlineTickOutMap", onlineTickOutMap);
 			sessionDAO.delete(session);
 			return renderResult(Global.TRUE, "踢出已成功！");
 		}

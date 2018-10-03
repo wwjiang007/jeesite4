@@ -6,7 +6,7 @@
 	<parent>
 		<groupId>com.jeesite</groupId>
 		<artifactId>jeesite-parent</artifactId>
-		<version>4.0.4-SNAPSHOT</version>
+		<version>4.0.7-SNAPSHOT</version>
 		<relativePath>../parent/pom.xml</relativePath>
 	</parent>
 	
@@ -19,6 +19,7 @@
 	
 	<properties>
 		
+		<finalName>web</finalName><!-- war包的名称 ${project.artifactId} -->
 		<start-class>com.jeesite.modules.config.Application</start-class>
 		
 		<!-- environment setting -->
@@ -44,20 +45,6 @@
 			<version>${project.parent.version}</version>
 		</dependency>
 		
-		<!-- 内容管理模块 
-		<dependency>
-			<groupId>com.jeesite</groupId>
-			<artifactId>jeesite-module-cms</artifactId>
-			<version>${project.parent.version}</version>
-		</dependency>-->
-		
-		<!-- 微信模块 
-		<dependency>
-			<groupId>com.jeesite</groupId>
-			<artifactId>jeesite-module-weixin</artifactId>
-			<version>${project.parent.version}</version>
-		</dependency>-->
-		
 		<!-- 自定义jar依赖包演示
 		<dependency>
 			<groupId>com.jeesite</groupId>
@@ -70,7 +57,7 @@
 	</dependencies>
 	
 	<build>
-		<finalName>${project.artifactId}</finalName>
+		<finalName>${finalName}</finalName>
 		<outputDirectory>${project.basedir}/src/main/webapp/WEB-INF/classes/</outputDirectory>
 		<plugins>
 			
@@ -84,6 +71,23 @@
 				<artifactId>maven-shade-plugin</artifactId>
 			</plugin> -->
 			
+			<!-- 打包插件, war包名称不带版本号 -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-war-plugin</artifactId>
+				<configuration>
+					<warSourceExcludes>
+						WEB-INF/classes/*.lic,
+						userfiles/**
+					</warSourceExcludes>
+					<webappDirectory>${project.build.directory}/${project.artifactId}</webappDirectory>
+					<warName>${finalName}</warName>
+					<archive>
+						<addMavenDescriptor>false</addMavenDescriptor>
+					</archive>
+				</configuration>
+			</plugin>
+			
 			<!-- Eclipse插件 -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -91,7 +95,7 @@
 				<configuration>
 					<downloadSources>${eclipse-plugin-download-sources}</downloadSources>
 					<downloadJavadocs>${eclipse-plugin-download-javadocs}</downloadJavadocs>
-					<wtpContextName>${project.artifactId}</wtpContextName>
+					<wtpContextName>${finalName}</wtpContextName>
 					<wtpversion>2.0</wtpversion>
 					<jeeversion>6.0</jeeversion>
 				</configuration>

@@ -13,6 +13,7 @@ import org.apache.shiro.authz.annotation.Logical;
 import org.apache.shiro.authz.annotation.RequiresPermissions;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.annotation.Validated;
@@ -22,12 +23,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.jeesite.common.codec.EncodeUtils;
 import com.jeesite.common.collect.ListUtils;
 import com.jeesite.common.collect.MapUtils;
 import com.jeesite.common.config.Global;
 import com.jeesite.common.entity.Page;
 import com.jeesite.common.lang.DateUtils;
 import com.jeesite.common.lang.StringUtils;
+import com.jeesite.common.mapper.JsonMapper;
 import com.jeesite.common.utils.excel.ExcelExport;
 import com.jeesite.common.utils.excel.annotation.ExcelField.Type;
 import com.jeesite.common.web.BaseController;
@@ -52,6 +55,7 @@ import com.jeesite.modules.sys.utils.UserUtils;
  */
 @Controller
 @RequestMapping(value = "${adminPath}/sys/empUser")
+@ConditionalOnProperty(name="web.core.enabled", havingValue="true", matchIfMissing=true)
 public class EmpUserController extends BaseController {
 
 	@Autowired
@@ -94,7 +98,8 @@ public class EmpUserController extends BaseController {
 		if (!(isAll != null && isAll)){
 			empUserService.addDataScopeFilter(empUser, UserDataScope.CTRL_PERMI_MANAGE);
 		}
-		Page<EmpUser> page = empUserService.findPage(new Page<EmpUser>(request, response), empUser);
+		empUser.setPage(new Page<EmpUser>(request, response));
+		Page<EmpUser> page = empUserService.findPage(empUser);
 		return page;
 	}
 
@@ -175,8 +180,9 @@ public class EmpUserController extends BaseController {
 		}
 		List<EmpUser> list = empUserService.findList(empUser);
 		String fileName = "用户数据" + DateUtils.getDate("yyyyMMddHHmmss") + ".xlsx";
-		new ExcelExport("用户数据", EmpUser.class).setDataList(list)
-				.write(response, fileName).dispose();
+		try(ExcelExport ee = new ExcelExport("用户数据", EmpUser.class)){
+			ee.setDataList(list).write(response, fileName);
+		}
 	}
 
 	/**
@@ -194,8 +200,9 @@ public class EmpUserController extends BaseController {
 		}
 		List<EmpUser> list = ListUtils.newArrayList(empUser);
 		String fileName = "用户数据模板.xlsx";
-		new ExcelExport("用户数据", EmpUser.class, Type.IMPORT).setDataList(list)
-				.write(response, fileName).dispose();
+		try(ExcelExport ee = new ExcelExport("用户数据", EmpUser.class, Type.IMPORT)){
+			ee.setDataList(list).write(response, fileName);
+		}
 	}
 
 	/**
@@ -326,6 +333,7 @@ public class EmpUserController extends BaseController {
 		if (!EmpUser.USER_TYPE_EMPLOYEE.equals(empUser.getUserType())){
 			return renderResult(Global.FALSE, "非法操作，不能够操作此用户！");
 		}
+		empUser.setMgrType(User.MGR_TYPE_NOT_ADMIN);
 		userService.saveAuthDataScope(empUser);
 		return renderResult(Global.TRUE, text("用户分配数据权限成功"));
 	}
@@ -363,9 +371,9 @@ public class EmpUserController extends BaseController {
 		if (!(isAll != null && isAll)) {
 			empUserService.addDataScopeFilter(empUser);
 		}
-		List<User> list = userService.findList(empUser);
+		List<EmpUser> list = empUserService.findList(empUser);
 		for (int i = 0; i < list.size(); i++) {
-			User e = list.get(i);
+			EmpUser e = list.get(i);
 			Map<String, Object> map = MapUtils.newHashMap();
 			map.put("id", StringUtils.defaultIfBlank(idPrefix, "u_") + e.getId());
 			map.put("pId", StringUtils.defaultIfBlank(pId, "0"));
@@ -373,6 +381,21 @@ public class EmpUserController extends BaseController {
 			mapList.add(map);
 		}
 		return mapList;
+	}
+	
+	/**
+	 * 选择员工对话框
+	 */
+	@RequiresPermissions("user")
+	@RequestMapping(value = "empUserSelect")
+	public String empUserSelect(EmpUser empUser, String selectData, String checkbox, Model model) {
+		String selectDataJson = EncodeUtils.decodeUrl(selectData);
+		if (JsonMapper.fromJson(selectDataJson, Map.class) != null){
+			model.addAttribute("selectData", selectDataJson);
+		}
+		model.addAttribute("checkbox", checkbox); // 是否显示复选框，支持多选
+		model.addAttribute("empUser", empUser); // ModelAttribute
+		return "modules/sys/user/empUserSelect";
 	}
 	
 }

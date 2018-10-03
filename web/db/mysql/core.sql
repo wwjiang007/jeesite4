@@ -176,7 +176,7 @@ CREATE TABLE js_sys_config
 	id varchar(64) NOT NULL COMMENT '编号',
 	config_name varchar(100) NOT NULL COMMENT '名称',
 	config_key varchar(100) NOT NULL COMMENT '参数键',
-	config_value varchar(1000) NOT NULL COMMENT '参数值',
+	config_value varchar(1000) COMMENT '参数值',
 	is_sys char(1) NOT NULL COMMENT '系统内置（1是 0否）',
 	create_by varchar(64) NOT NULL COMMENT '创建者',
 	create_date datetime NOT NULL COMMENT '创建时间',
@@ -790,8 +790,8 @@ CREATE TABLE js_sys_user_role
 
 /* Create Indexes */
 
-CREATE INDEX idx_gen_table_ptn ON js_gen_table ();
-CREATE INDEX idx_gen_table_column_tn ON js_gen_table_column ();
+CREATE INDEX idx_gen_table_ptn ON js_gen_table (parent_table_name ASC);
+CREATE INDEX idx_gen_table_column_tn ON js_gen_table_column (table_name ASC);
 CREATE INDEX idx_sys_area_pc ON js_sys_area (parent_code ASC);
 CREATE INDEX idx_sys_area_ts ON js_sys_area (tree_sort ASC);
 CREATE INDEX idx_sys_area_status ON js_sys_area (status ASC);
