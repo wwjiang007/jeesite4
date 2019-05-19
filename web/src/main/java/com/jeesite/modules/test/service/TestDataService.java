@@ -52,7 +52,7 @@ public class TestDataService extends CrudService<TestDataDao, TestData> {
 	 * @return
 	 */
 	@Override
-	public Page<TestData> findPage(Page<TestData> page, TestData testData) {
+	public Page<TestData> findPage(TestData testData) {
 		
 //		// 演示Map参数和返回值，支持分页
 //		Page<Map<String, Object>> pageMap = new Page<>();
@@ -63,7 +63,7 @@ public class TestDataService extends CrudService<TestDataDao, TestData> {
 //		System.out.println(pageMap.getList());
 //		System.out.println(pageMap.getCount());
 		
-		return super.findPage(page, testData);
+		return super.findPage(testData);
 	}
 	
 	/**
@@ -115,7 +115,7 @@ public class TestDataService extends CrudService<TestDataDao, TestData> {
 		super.delete(testData);
 		TestDataChild testDataChild = new TestDataChild();
 		testDataChild.setTestData(testData);
-		testDataChildDao.delete(testDataChild);
+		testDataChildDao.deleteByEntity(testDataChild);
 	}
 	
 	/**
