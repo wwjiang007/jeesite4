@@ -3,14 +3,11 @@
  */
 package com.jeesite.common.web;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URLDecoder;
-import java.net.URLEncoder;
-
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.jeesite.common.codec.EncodeUtils;
 import com.jeesite.common.lang.StringUtils;
 
 /**
@@ -21,12 +18,12 @@ import com.jeesite.common.lang.StringUtils;
 public class CookieUtils {
 
 	/**
-	 * 设置 Cookie（生成时间为1天）
+	 * 设置 Cookie（生存时间为30天）
 	 * @param name 名称
 	 * @param value 值
 	 */
 	public static void setCookie(HttpServletResponse response, String name, String value) {
-		setCookie(response, name, value, 60*60*24);
+		setCookie(response, name, value, 60*60*24*30);
 	}
 	
 	/**
@@ -37,7 +34,7 @@ public class CookieUtils {
 	 * @param uri 路径
 	 */
 	public static void setCookie(HttpServletResponse response, String name, String value, String path) {
-		setCookie(response, name, value, path, 60*60*24);
+		setCookie(response, name, value, path, 60*60*24*30);
 	}
 	
 	/**
@@ -60,14 +57,12 @@ public class CookieUtils {
 	 */
 	public static void setCookie(HttpServletResponse response, String name, String value, String path, int maxAge) {
 		if (StringUtils.isNotBlank(name)){
+			name = EncodeUtils.encodeUrl(name);
+			value = EncodeUtils.encodeUrl(value);
 			Cookie cookie = new Cookie(name, null);
 			cookie.setPath(path);
 			cookie.setMaxAge(maxAge);
-			try {
-				cookie.setValue(URLEncoder.encode(value, "utf-8"));
-			} catch (UnsupportedEncodingException e) {
-				e.printStackTrace();
-			}
+			cookie.setValue(value);
 			response.addCookie(cookie);
 		}
 	}
@@ -113,15 +108,12 @@ public class CookieUtils {
 	public static String getCookie(HttpServletRequest request, HttpServletResponse response, String name, String path, boolean isRemove) {
 		String value = null;
 		if (StringUtils.isNotBlank(name)){
+			name = EncodeUtils.encodeUrl(name);
 			Cookie[] cookies = request.getCookies();
 			if (cookies != null) {
 				for (Cookie cookie : cookies) {
 					if (cookie.getName().equals(name)) {
-						try {
-							value = URLDecoder.decode(cookie.getValue(), "utf-8");
-						} catch (UnsupportedEncodingException e) {
-							e.printStackTrace();
-						}
+						value = EncodeUtils.decodeUrl(cookie.getValue());
 						if (isRemove && response != null) {
 							cookie.setPath(path);
 							cookie.setMaxAge(0);

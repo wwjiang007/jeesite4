@@ -6,6 +6,9 @@ package com.jeesite.modules.sys.web;
 import java.util.List;
 import java.util.Map;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
 import org.apache.shiro.authz.annotation.RequiresPermissions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -20,6 +23,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import com.jeesite.common.collect.ListUtils;
 import com.jeesite.common.collect.MapUtils;
 import com.jeesite.common.config.Global;
+import com.jeesite.common.entity.Page;
 import com.jeesite.common.idgen.IdGen;
 import com.jeesite.common.lang.StringUtils;
 import com.jeesite.common.web.BaseController;
@@ -56,6 +60,7 @@ public class AreaController extends BaseController {
 	@RequiresPermissions("sys:area:view")
 	@RequestMapping(value = "list")
 	public String list(Area area, Model model) {
+		model.addAttribute("area", area);
 		return "modules/sys/areaList";
 	}
 	
@@ -63,7 +68,7 @@ public class AreaController extends BaseController {
 	 * 查询区域数据
 	 * @param area
 	 */
-	@RequiresPermissions("user")
+	@RequiresPermissions("sys:area:view")
 	@RequestMapping(value = "listData")
 	@ResponseBody
 	public List<Area> listData(Area area) {
@@ -76,6 +81,22 @@ public class AreaController extends BaseController {
 		}
 		List<Area> list = areaService.findList(area);
 		return list;
+	}
+	
+	@RequiresPermissions("sys:area:view")
+	@RequestMapping(value = "listPageData")
+	@ResponseBody
+	public Page<Area> listPageData(Area area, HttpServletRequest request, HttpServletResponse response) {
+		if (StringUtils.isBlank(area.getParentCode())) {
+			area.setParentCode(Area.ROOT_CODE);
+		}
+		if (StringUtils.isNotBlank(area.getAreaCode())
+				|| StringUtils.isNotBlank(area.getAreaName())){
+			area.setParentCode(null);
+		}
+		area.setPage(new Page<>(request, response, !area.getIsRoot() ? Page.PAGE_SIZE_NOT_PAGING : null));
+		Page<Area> page = areaService.findPage(area);
+		return page;
 	}
 	
 	/**
@@ -129,7 +150,7 @@ public class AreaController extends BaseController {
 	@ResponseBody
 	public String save(@Validated Area area, Model model) {
 		areaService.save(area);
-		return renderResult(Global.TRUE, "保存区域'" + area.getAreaName() + "'成功");
+		return renderResult(Global.TRUE, text("保存区域成功"));
 	}
 
 	/**
@@ -145,11 +166,11 @@ public class AreaController extends BaseController {
 		where.setParentCodes("," + area.getId() + ",");
 		long count = areaService.findCount(where);
 		if (count > 0) {
-			return renderResult(Global.FALSE, "该区域包含未停用的子区域！");
+			return renderResult(Global.FALSE, text("该区域包含未停用的子区域！"));
 		}
 		area.setStatus(Area.STATUS_DISABLE);
 		areaService.updateStatus(area);
-		return renderResult(Global.TRUE, "停用区域" + area.getAreaName() + "成功");
+		return renderResult(Global.TRUE, text("停用区域成功"));
 	}
 
 	/**
@@ -162,7 +183,7 @@ public class AreaController extends BaseController {
 	public String enable(Area area) {
 		area.setStatus(Area.STATUS_NORMAL);
 		areaService.updateStatus(area);
-		return renderResult(Global.TRUE, "启用区域" + area.getAreaName() + "成功");
+		return renderResult(Global.TRUE, text("启用区域成功"));
 	}
 
 	/**
@@ -174,7 +195,7 @@ public class AreaController extends BaseController {
 	@ResponseBody
 	public String delete(Area area) {
 		areaService.delete(area);
-		return renderResult(Global.TRUE, "删除区域成功");
+		return renderResult(Global.TRUE, text("删除区域成功"));
 	}
 
 	/**
@@ -186,9 +207,16 @@ public class AreaController extends BaseController {
 	@RequiresPermissions("user")
 	@RequestMapping(value = "treeData")
 	@ResponseBody
-	public List<Map<String, Object>> treeData(String excludeCode, String isShowCode) {
+	public List<Map<String, Object>> treeData(String excludeCode, String isShowCode, String parentCode) {
 		List<Map<String, Object>> mapList = ListUtils.newArrayList();
-		List<Area> list = AreaUtils.getAreaAllList();
+		List<Area> list = null;
+		if (StringUtils.isNotBlank(parentCode)){
+			Area where = new Area();
+			where.setParentCode(parentCode);
+			list = areaService.findList(where);
+		}else{
+			list = AreaUtils.getAreaAllList();
+		}
 		for (int i=0; i<list.size(); i++){
 			Area e = list.get(i);
 			// 过滤非正常的数据
@@ -208,6 +236,7 @@ public class AreaController extends BaseController {
 			map.put("id", e.getId());
 			map.put("pId", e.getParentCode());
 			map.put("name", StringUtils.getTreeNodeName(isShowCode, e.getId(), e.getAreaName()));
+			map.put("isParent", !e.getIsTreeLeaf());
 			mapList.add(map);
 		}
 		return mapList;
@@ -218,9 +247,9 @@ public class AreaController extends BaseController {
 	@ResponseBody
 	public String fixTreeData(){
 		if (!UserUtils.getUser().isAdmin()){
-			return renderResult(Global.FALSE, "操作失败，只有管理员才能进行修复！");
+			return renderResult(Global.FALSE, text("操作失败，只有管理员才能进行修复！"));
 		}
 		areaService.fixTreeData();
-		return renderResult(Global.TRUE, "数据修复成功");
+		return renderResult(Global.TRUE, text("数据修复成功"));
 	}
 }

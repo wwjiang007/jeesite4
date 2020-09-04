@@ -136,9 +136,9 @@ import com.jeesite.common.mybatis.mapper.query.QueryType;
 			}
 		}
 		if (isNotBlank(joinTables)){
-			print('joinTable={\n');
+			print('joinTable={');
 			print(joinTables);
-			print('\t}, ');
+			print('}, ');
 		}
 		// ◆ 生成排序字段
 	%>orderBy="<% if (isTree){
@@ -173,7 +173,7 @@ public class ${ClassName} extends ${table.isTreeEntity?'Tree':'Data'}Entity<${Cl
 			}
 		}
 		// 如果不是基类属性
-		else if(c.columnName != 'id' && !c.isSuperColumn){
+		else if(!@StringUtils.equalsIgnoreCase(c.columnName, 'id') && !c.isSuperColumn){
 			// 父类对象
 			if(table.parentExists && table.parentTableFkName == c.columnName){
 	%>
@@ -199,7 +199,7 @@ public class ${ClassName} extends ${table.isTreeEntity?'Tree':'Data'}Entity<${Cl
 	%>
 	
 	public ${ClassName}() {
-		this(null);
+		this(<% for(pk in table.pkList){ %>${pkLP.index!=1?', ':''}null<% } %>);
 	}
 
 	<%
@@ -268,7 +268,7 @@ public class ${ClassName} extends ${table.isTreeEntity?'Tree':'Data'}Entity<${Cl
 	<%
 				}
 		// 如果不是基类属性
-		}else if(c.columnName != 'id' && !c.isSuperColumn){
+		}else if(!@StringUtils.equalsIgnoreCase(c.columnName, 'id') && !c.isSuperColumn){
 	%>
 	
 	<%

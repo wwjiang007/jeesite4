@@ -20,6 +20,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -31,6 +32,7 @@ import com.jeesite.common.entity.Page;
 import com.jeesite.common.lang.DateUtils;
 import com.jeesite.common.lang.StringUtils;
 import com.jeesite.common.mapper.JsonMapper;
+import com.jeesite.common.shiro.realm.AuthorizingRealm;
 import com.jeesite.common.utils.excel.ExcelExport;
 import com.jeesite.common.utils.excel.annotation.ExcelField.Type;
 import com.jeesite.common.web.BaseController;
@@ -71,12 +73,16 @@ public class EmpUserController extends BaseController {
 
 	@ModelAttribute
 	public EmpUser get(String userCode, boolean isNewRecord) {
-		return empUserService.get(userCode, isNewRecord);
+		EmpUser empUser = new EmpUser();
+		empUser.setUserCode(userCode);
+		empUser.setIsNewRecord(isNewRecord);
+		return empUserService.getAndValid(empUser);
 	}
 
 	@RequiresPermissions("sys:empUser:view")
 	@RequestMapping(value = "index")
 	public String index(EmpUser empUser, Model model) {
+		model.addAttribute("empUser", empUser);
 		return "modules/sys/user/empUserIndex";
 	}
 	
@@ -86,6 +92,7 @@ public class EmpUserController extends BaseController {
 		// 获取岗位列表
 		Post post = new Post();
 		model.addAttribute("postList", postService.findList(post));
+		model.addAttribute("empUser", empUser);
 		return "modules/sys/user/empUserList";
 	}
 
@@ -95,7 +102,7 @@ public class EmpUserController extends BaseController {
 	public Page<EmpUser> listData(EmpUser empUser, Boolean isAll, String ctrlPermi, HttpServletRequest request, HttpServletResponse response) {
 		empUser.getEmployee().getOffice().setIsQueryChildren(true);
 		empUser.getEmployee().getCompany().setIsQueryChildren(true);
-		if (!(isAll != null && isAll)){
+		if (!(isAll != null && isAll) || Global.isStrictMode()){
 			empUserService.addDataScopeFilter(empUser, ctrlPermi);
 		}
 		empUser.setPage(new Page<>(request, response));
@@ -123,9 +130,11 @@ public class EmpUserController extends BaseController {
 		Post post = new Post();
 		model.addAttribute("postList", postService.findList(post));
 		
-		// 获取当前用户所拥有的岗位
 		if (StringUtils.isNotBlank(employee.getEmpCode())){
+			// 获取当前用户所拥有的岗位
 			employee.setEmployeePostList(employeeService.findEmployeePostList(employee));
+			// 获取当前员工关联的附属机构信息
+			employee.setEmployeeOfficeList(employeeService.findEmployeeOfficeList(employee));
 		}
 		
 		// 获取当前编辑用户的角色和权限
@@ -146,15 +155,22 @@ public class EmpUserController extends BaseController {
 	@RequiresPermissions(value={"sys:empUser:edit","sys:empUser:authRole"}, logical=Logical.OR)
 	@PostMapping(value = "save")
 	@ResponseBody
-	public String save(@Validated EmpUser empUser, String oldLoginCode, String op, HttpServletRequest request) {
+	public String save(@Validated EmpUser empUser, String op, HttpServletRequest request) {
 		if (User.isSuperAdmin(empUser.getUserCode())) {
 			return renderResult(Global.FALSE, "非法操作，不能够操作此用户！");
 		}
 		if (!EmpUser.USER_TYPE_EMPLOYEE.equals(empUser.getUserType())){
 			return renderResult(Global.FALSE, "非法操作，不能够操作此用户！");
 		}
-		if (!Global.TRUE.equals(userService.checkLoginCode(oldLoginCode, empUser.getLoginCode()/*, null*/))) {
+		EmpUser old = super.getWebDataBinderSource(request);
+		if (!Global.TRUE.equals(userService.checkLoginCode(old != null ? old.getLoginCode() : "", empUser.getLoginCode()))) {
 			return renderResult(Global.FALSE, text("保存用户失败，登录账号''{0}''已存在", empUser.getLoginCode()));
+		}
+		if (StringUtils.isBlank(empUser.getEmployee().getEmpNo())){
+			empUser.getEmployee().setEmpNo(empUser.getLoginCode());
+		}
+		if (!Global.TRUE.equals(checkEmpNo(old != null ? old.getEmployee().getEmpNo() : "", empUser.getEmployee().getEmpNo()))) {
+			return renderResult(Global.FALSE, text("保存用户失败，员工工号''{0}''已存在", empUser.getEmployee().getEmpNo()));
 		}
 		if (StringUtils.inString(op, Global.OP_ADD, Global.OP_EDIT)
 				&& UserUtils.getSubject().isPermitted("sys:empUser:edit")){
@@ -166,6 +182,26 @@ public class EmpUserController extends BaseController {
 		}
 		return renderResult(Global.TRUE, text("保存用户''{0}''成功", empUser.getUserName()));
 	}
+	
+	/**
+	 * 验证工号是否有效
+	 * @param oldName
+	 * @param name
+	 * @return
+	 */
+	@RequiresPermissions("user")
+	@RequestMapping(value = "checkEmpNo")
+	@ResponseBody
+	public String checkEmpNo(String oldEmpNo, @RequestParam("employee.empNo") String empNo) {
+		Employee employee = new Employee();
+		employee.setEmpNo(empNo);
+		if (empNo != null && empNo.equals(oldEmpNo)) {
+			return Global.TRUE;
+		} else if (empNo != null && employeeService.getByEmpNo(employee) == null) {
+			return Global.TRUE;
+		}
+		return Global.FALSE;
+	}
 
 	/**
 	 * 导出用户数据
@@ -175,7 +211,7 @@ public class EmpUserController extends BaseController {
 	public void exportData(EmpUser empUser, Boolean isAll, String ctrlPermi, HttpServletResponse response) {
 		empUser.getEmployee().getOffice().setIsQueryChildren(true);
 		empUser.getEmployee().getCompany().setIsQueryChildren(true);
-		if (!(isAll != null && isAll)){
+		if (!(isAll != null && isAll) || Global.isStrictMode()){
 			empUserService.addDataScopeFilter(empUser, ctrlPermi);
 		}
 		List<EmpUser> list = empUserService.findList(empUser);
@@ -240,7 +276,7 @@ public class EmpUserController extends BaseController {
 			return renderResult(Global.FALSE, text("停用用户失败，不允许停用当前用户"));
 		}
 		empUser.setStatus(User.STATUS_DISABLE);
-		userService.updateStatus(empUser);
+		empUserService.updateStatus(empUser);
 		return renderResult(Global.TRUE, text("停用用户''{0}''成功", empUser.getUserName()));
 	}
 	
@@ -260,7 +296,8 @@ public class EmpUserController extends BaseController {
 			return renderResult(Global.FALSE, "非法操作，不能够操作此用户！");
 		}
 		empUser.setStatus(User.STATUS_NORMAL);
-		userService.updateStatus(empUser);
+		empUserService.updateStatus(empUser);
+		AuthorizingRealm.isValidCodeLogin(empUser.getLoginCode(), empUser.getCorpCode_(), null, "success");
 		return renderResult(Global.TRUE, text("启用用户''{0}''成功", empUser.getUserName()));
 	}
 	
@@ -280,6 +317,7 @@ public class EmpUserController extends BaseController {
 			return renderResult(Global.FALSE, "非法操作，不能够操作此用户！");
 		}
 		userService.updatePassword(empUser.getUserCode(), null);
+		AuthorizingRealm.isValidCodeLogin(empUser.getLoginCode(), empUser.getCorpCode_(), null, "success");
 		return renderResult(Global.TRUE, text("重置用户''{0}''密码成功", empUser.getUserName()));
 	}
 
@@ -367,7 +405,7 @@ public class EmpUserController extends BaseController {
 		empUser.setRoleCode(roleCode);
 		empUser.setStatus(User.STATUS_NORMAL);
 		empUser.setUserType(User.USER_TYPE_EMPLOYEE);
-		if (!(isAll != null && isAll)) {
+		if (!(isAll != null && isAll) || Global.isStrictMode()) {
 			empUserService.addDataScopeFilter(empUser, ctrlPermi);
 		}
 		List<EmpUser> list = empUserService.findList(empUser);

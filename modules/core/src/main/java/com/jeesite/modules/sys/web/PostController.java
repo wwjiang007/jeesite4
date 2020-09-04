@@ -50,6 +50,7 @@ public class PostController extends BaseController {
 	@RequiresPermissions("sys:post:view")
 	@RequestMapping(value = "list")
 	public String list(Post post, Model model) {
+		model.addAttribute("post", post);
 		return "modules/sys/postList";
 	}
 	
@@ -131,7 +132,6 @@ public class PostController extends BaseController {
 
 	/**
 	 * 获取岗位树结构数据
-	 * @param isAll			是否显示所有机构（true：不进行权限过滤）
 	 * @param isShowCode	是否显示编码（true or 1：显示在左侧；2：显示在右侧；false or null：不显示）
 	 * @return
 	 */

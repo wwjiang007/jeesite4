@@ -23,17 +23,16 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
-import com.jeesite.common.cache.CacheUtils;
 import com.jeesite.common.collect.ListUtils;
 import com.jeesite.common.collect.MapUtils;
 import com.jeesite.common.config.Global;
 import com.jeesite.common.lang.DateUtils;
-import com.jeesite.common.lang.ObjectUtils;
 import com.jeesite.common.lang.StringUtils;
 import com.jeesite.common.lang.TimeUtils;
 import com.jeesite.common.shiro.realm.LoginInfo;
 import com.jeesite.common.shiro.session.SessionDAO;
 import com.jeesite.common.web.BaseController;
+import com.jeesite.modules.sys.utils.SysCacheUtils;
 import com.jeesite.modules.sys.utils.UserUtils;
 
 /**
@@ -105,35 +104,33 @@ public class OnlineController extends BaseController{
 			map.put("startTimestamp", DateUtils.formatDateTime(session.getStartTimestamp()));
 			map.put("lastAccessTime", DateUtils.formatDateTime(session.getLastAccessTime()));
 			map.put("timeout", TimeUtils.formatDateAgo(session.getTimeout()-(currentTime-session.getLastAccessTime().getTime())));
-			Object pc = session.getAttribute(DefaultSubjectContext.PRINCIPALS_SESSION_KEY);
-			if (pc != null && pc instanceof PrincipalCollection){
-				LoginInfo loginInfo = (LoginInfo)((PrincipalCollection)pc).getPrimaryPrincipal();
-				if (loginInfo != null){
-					map.put("userCode", session.getAttribute("userCode"));// principal.getId());
-					map.put("userName", session.getAttribute("userName"));// principal.getName());
-					map.put("userType", session.getAttribute("userType"));// ObjectUtils.toString(principal.getParam("userType")));
-					map.put("deviceType", ObjectUtils.toString(loginInfo.getParam("deviceType")));
-				}
-			}
+			map.put("userCode", session.getAttribute("userCode"));
+			map.put("userName", session.getAttribute("userName"));
+			map.put("userType", session.getAttribute("userType"));
+			map.put("deviceType", session.getAttribute("deviceType"));
 			map.put("host", session.getHost());
 			list.add(map);
 		}
 		// 本地排序
-		if (StringUtils.isNotBlank(orderBy)){
-			final String[] ss = orderBy.trim().split(" ");
-			if (ss != null && ss.length == 2){
-				Collections.sort(list, new Comparator<Map<String, Object>>() {
-					@Override
-					public int compare(Map<String, Object> o1, Map<String, Object> o2) {
-						String s1 = (String)o1.get(ss[0]);
-						String s2 = (String)o2.get(ss[0]);
-						if ("asc".equals(ss[1])){
-							return s1.compareTo(s2);
-						}else{
-							return s2.compareTo(s1);
-						}
-					}});
-			}
+		if (StringUtils.isBlank(orderBy)){
+			orderBy = "lastAccessTime desc";
+		}
+		final String[] ss = orderBy.trim().split(" ");
+		if (ss != null && ss.length == 2){
+			Collections.sort(list, new Comparator<Map<String, Object>>() {
+				@Override
+				public int compare(Map<String, Object> o1, Map<String, Object> o2) {
+					String s1 = (String)o1.get(ss[0]);
+					String s2 = (String)o2.get(ss[0]);
+					if (s1 == null || s2 == null){
+						return -1;
+					}
+					if ("asc".equals(ss[1])){
+						return s1.compareTo(s2);
+					}else{
+						return s2.compareTo(s1);
+					}
+				}});
 		}
 		return list;
 	}
@@ -145,26 +142,29 @@ public class OnlineController extends BaseController{
 	@RequiresPermissions("sys:online:edit")
 	@RequestMapping(value = "tickOut")
 	@ResponseBody
-	public String tickOut(String sessionId) {
+	public String kickOut(String sessionId) {
 		Session session = sessionDAO.readSession(sessionId);
 		if (session != null){
-			Map<String, String> onlineTickOutMap = CacheUtils.get("onlineTickOutMap");
+			Map<String, String> onlineTickOutMap = SysCacheUtils.get("onlineTickOutMap");
 			if (onlineTickOutMap == null){
 				onlineTickOutMap = MapUtils.newConcurrentMap();
 			}
 			Object pc = session.getAttribute(DefaultSubjectContext.PRINCIPALS_SESSION_KEY);
 			if (pc != null && pc instanceof PrincipalCollection){
-				LoginInfo loginInfo = (LoginInfo)((PrincipalCollection)pc).getPrimaryPrincipal();
-				if (loginInfo != null){
-					String key = loginInfo.getId()+"_"+loginInfo.getParam("deviceType", "PC");
-					onlineTickOutMap.put(key, StringUtils.EMPTY);
+				Object pp = ((PrincipalCollection)pc).getPrimaryPrincipal();
+				if (pp != null) {
+					if (pp instanceof LoginInfo){
+						LoginInfo loginInfo = ((LoginInfo)pp);
+						String key = loginInfo.getId()+"_"+loginInfo.getParam("deviceType", "PC");
+						onlineTickOutMap.put(key, StringUtils.EMPTY);
+					}
 				}
 			}
-			CacheUtils.put("onlineTickOutMap", onlineTickOutMap);
+			SysCacheUtils.put("onlineTickOutMap", onlineTickOutMap);
 			sessionDAO.delete(session);
-			return renderResult(Global.TRUE, "踢出已成功！");
+			return renderResult(Global.TRUE, text("踢出已成功！"));
 		}
-		return renderResult(Global.FALSE, "踢出失败，没有找到该在线用户！");
+		return renderResult(Global.FALSE, text("踢出失败，没有找到该在线用户！"));
 	}
 	
 }

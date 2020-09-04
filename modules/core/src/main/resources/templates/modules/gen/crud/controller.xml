@@ -63,8 +63,12 @@ public class ${ClassName}Controller extends BaseController {
 		<% if (table.pkList.~size == 1){ %>
 		return ${className}Service.get(<% for(pk in table.pkList){ %>${pkLP.index!=1?', ':''}${pk.simpleAttrName}<% } %>, isNewRecord);
 		<% }else{ %>
-		return ${className}Service.get(new Class<?>[]{<% for(pk in table.pkList){ %>${pkLP.index!=1?', ':''}${pk.simpleAttrType}.class<% } %>},
-				new Object[]{<% for(pk in table.pkList){ %>${pkLP.index!=1?', ':''}${pk.simpleAttrName}<% } %>}, isNewRecord);
+		${ClassName} ${className} = new ${ClassName}();
+		<% for(pk in table.pkList){ %>
+		${className}.set${@StringUtils.cap(pk.simpleAttrName)}(${pk.simpleAttrName});
+		<% } %>
+		${className}.setIsNewRecord(isNewRecord);
+		return ${className}Service.getAndValid(${className});
 		<% } %>
 	}
 	
@@ -91,9 +95,15 @@ public class ${ClassName}Controller extends BaseController {
 		}
 		<% for(c in table.columnList){ %>
 			<% if(c.isQuery == "1" && !c.isTreeEntityColumn && c.attrName != 'status'){ %>
+				<% if(c.attrType == 'String'){ %>
 		if (StringUtils.isNotBlank(${className}.${c.attrNameForGetMethod})){
 			${className}.setParentCode(null);
 		}
+				<% }else{ %>
+		if (${className}.${c.attrNameForGetMethod} != null){
+			${className}.setParentCode(null);
+		}
+				<% } %>
 			<% } %>
 		<% } %>
 		List<${ClassName}> list = ${className}Service.findList(${className});
@@ -155,7 +165,7 @@ public class ${ClassName}Controller extends BaseController {
 	<% } %>
 
 	/**
-	 * 保存${functionNameSimple}
+	 * 保存数据
 	 */
 	@RequiresPermissions("${permissionPrefix}:edit")
 	@PostMapping(value = "save")
@@ -164,10 +174,10 @@ public class ${ClassName}Controller extends BaseController {
 		${className}Service.save(${className});
 		return renderResult(Global.TRUE, text("保存${functionNameSimple}成功！"));
 	}
-	<% if(@ObjectUtils.toBoolean(table.optionMap['isHaveDisableEnable'])){ %>
+	<% if(toBoolean(table.optionMap['isHaveDisableEnable'])){ %>
 	
 	/**
-	 * 停用${functionNameSimple}
+	 * 停用数据
 	 */
 	@RequiresPermissions("${permissionPrefix}:edit")
 	@RequestMapping(value = "disable")
@@ -188,7 +198,7 @@ public class ${ClassName}Controller extends BaseController {
 	}
 	
 	/**
-	 * 启用${functionNameSimple}
+	 * 启用数据
 	 */
 	@RequiresPermissions("${permissionPrefix}:edit")
 	@RequestMapping(value = "enable")
@@ -199,10 +209,10 @@ public class ${ClassName}Controller extends BaseController {
 		return renderResult(Global.TRUE, text("启用${functionNameSimple}成功"));
 	}
 	<% } %>
-	<% if(@ObjectUtils.toBoolean(table.optionMap['isHaveDelete'])){ %>
+	<% if(toBoolean(table.optionMap['isHaveDelete'])){ %>
 	
 	/**
-	 * 删除${functionNameSimple}
+	 * 删除数据
 	 */
 	@RequiresPermissions("${permissionPrefix}:edit")
 	@RequestMapping(value = "delete")
