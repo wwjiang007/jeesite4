@@ -21,6 +21,13 @@ import com.jeesite.common.entity.TreeEntity;
 import com.jeesite.common.mybatis.annotation.Column;
 import com.jeesite.common.mybatis.annotation.Table;
 import com.jeesite.common.mybatis.mapper.query.QueryType;
+<% if(toBoolean(table.optionMap['isBpmForm'])){ %>
+	<% if(table.isTreeEntity){ %>
+import com.jeesite.modules.bpm.entity.BpmTreeEntity;
+	<% }else{ %>
+import com.jeesite.modules.bpm.entity.BpmEntity;
+	<% } %>
+<% } %>
 
 /**
  * ${functionName}Entity
@@ -156,7 +163,7 @@ import com.jeesite.common.mybatis.mapper.query.QueryType;
 						}
 					} %>"
 )
-public class ${ClassName} extends ${table.isTreeEntity?'Tree':'Data'}Entity<${ClassName}> {
+public class ${ClassName} extends ${toBoolean(table.optionMap['isBpmForm'])?(table.isTreeEntity?'BpmTree':'Bpm'):table.isTreeEntity?'Tree':'Data'}Entity<${ClassName}> {
 	
 	private static final long serialVersionUID = 1L;
 	<%

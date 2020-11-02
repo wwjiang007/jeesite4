@@ -18,7 +18,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import com.fasterxml.jackson.annotation.JsonView;
@@ -37,16 +36,16 @@ import com.jeesite.modules.sys.utils.UserUtils;
 /**
  * 登录Controller
  * @author ThinkGem
- * @version 2020-4-13
+ * @version 2020-9-19
  */
 @Controller
 @RequestMapping(value = "${adminPath}")
 public class LoginController extends BaseController{
 	
 	/**
-	 * 管理登录
+	 * 登录页面
 	 */
-	@RequestMapping(value = "login", method = RequestMethod.GET)
+	@RequestMapping(value = "login")
 	public String login(HttpServletRequest request, HttpServletResponse response, Model model) {
 		// 地址中如果包含JSESSIONID，则跳转一次，去掉JSESSIONID信息。
 		if (StringUtils.containsIgnoreCase(request.getRequestURI(), ";JSESSIONID=")){
@@ -94,9 +93,9 @@ public class LoginController extends BaseController{
 	}
 
 	/**
-	 * 登录失败，真正登录的POST请求由Filter完成
+	 * 登录失败，返回错误信息
 	 */
-	@RequestMapping(value = "login", method = RequestMethod.POST)
+	@RequestMapping(value = "loginFailure")
 	public String loginFailure(HttpServletRequest request, HttpServletResponse response, Model model) {
 		LoginInfo loginInfo = UserUtils.getLoginInfo();
 		
@@ -190,7 +189,7 @@ public class LoginController extends BaseController{
 			// 设置共享SessionId的Cookie值（第三方系统使用）
 			String cookieName = Global.getProperty("session.shareSessionIdCookieName");
 			if (StringUtils.isNotBlank(cookieName)){
-				CookieUtils.setCookie((HttpServletResponse)response, cookieName, (String)session.getId());
+				CookieUtils.setCookie(response, cookieName, (String)session.getId(), "/");
 			}
 			// 如果登录设置了语言，则切换语言
 			if (loginInfo.getParam("lang") != null){
@@ -200,6 +199,9 @@ public class LoginController extends BaseController{
 
 		// 获取登录成功后跳转的页面
 		String successUrl = request.getParameter("__url");
+		if (StringUtils.isBlank(successUrl)){
+			successUrl = (String)request.getAttribute("__url");
+		}
 		if (StringUtils.isBlank(successUrl)){
 			successUrl = Global.getProperty("shiro.successUrl");
 		}
@@ -272,16 +274,16 @@ public class LoginController extends BaseController{
 	}
 	
 	/**
-	 * 获取侧边栏菜单数据
+	 * 侧边栏菜单数据
 	 */
 	@RequiresPermissions("user")
 	@RequestMapping(value = "index/menuTree")
 	public String indexMenuTree(String parentCode) {
-		return "modules/sys/sysIndex/menuTree";
+		return "modules/sys/menuTree";
 	}
 	
 	/**
-	 * 获取当前用户权限字符串数据（移动端用）
+	 * 当前用户权限字符串数据（移动端用）
 	 */
 	@RequiresPermissions("user")
 	@RequestMapping(value = "authInfo")
@@ -291,7 +293,7 @@ public class LoginController extends BaseController{
 	}
 
 	/**
-	 * 获取当前用户菜单数据（移动端用）
+	 * 当前用户菜单数据（移动端用）
 	 */
 	@RequiresPermissions("user")
 	@RequestMapping(value = "menuTree")
@@ -334,7 +336,7 @@ public class LoginController extends BaseController{
 	}
 	
 	/**
-	 * 切换主题
+	 * 切换主题风格
 	 */
 	@RequiresPermissions("user")
 	@RequestMapping(value = "switchSkin/{skinName}")

@@ -131,6 +131,9 @@ user:
   
   # 登录账号是否租户内唯一，否则全局唯一
   loginCodeCorpUnique: false
+  
+  # 是否启用验证码登录（手机、邮箱）
+  loginByValidCode: true
 
   # 用户类型配置信息（employee员工，member会员，btype往来单位，persion个人，expert专家，...），JSON 格式说明如下：
   # {"用户类型":{"beanName":"Service或Dao的Bean名称","loginView":"登录页面视图","indexView":"主框架页面视图，支持 redirect: 前缀"}}
@@ -368,7 +371,7 @@ shiro:
 #  accessControlAllowOrigin: http://demo.jeesite.com
 #  accessControlAllowOrigin: '*'
 
-  # 允许跨域访问时 CORS，可以使用的方法和响应头
+  # 允许跨域访问时 CORS，可以使用的方法和标头
 #  accessControlAllowMethods: GET, POST, OPTIONS
 #  accessControlAllowHeaders: Origin, No-Cache, X-Requested-With, If-Modified-Since, Pragma, Last-Modified, Cache-Control, Expires, Content-Type, X-E4M-With
 
@@ -431,8 +434,11 @@ session:
   # 注意：如果超时超过30m，你还需要同步修改当前配置文件的属性：j2cache.caffeine.region.sessionCache 超时时间，大于这个值。
   sessionTimeout: 1800000
   
+  # PC设备会话超时参数设置，登录请求参数加 param_deviceType=pc 时有效
+  #pcSessionTimeout: 1800000
+  
   # 手机APP设备会话超时参数设置，登录请求参数加 param_deviceType=mobileApp 时有效
-  mobileAppSessionTimeout: 43200000
+  #mobileAppSessionTimeout: 43200000
   
   # 定时清理失效会话，清理用户直接关闭浏览器造成的孤立会话
   sessionTimeoutClean: 1200000
@@ -505,10 +511,12 @@ web:
     # 使用智能参数接收器，同时支持 JSON 和 FormData 的参数接受
     smartMethodArgumentResolver: true
     
-    # 使用 .json、.xml 后缀匹配视图（不推荐使用，推荐使用 favorParameter）
+    # 使用 .json、.xml 后缀匹配返回视图数据（Spring官方已不推荐使用）
     favorPathExtension: false
-    # 使用 __ajax=json、__ajax=xml 参数名匹配视图
+    # 使用 __ajax=json、__ajax=xml 后缀匹配返回视图数据
     favorParameter: true
+    # 使用 __ajax=json、__ajax=xml 请求头匹配返回视图数据
+    favorHeader: true
 
   # MVC 拦截器
   interceptor:
@@ -624,6 +632,10 @@ video:
   
   # 将mp4视频的元数据信息转到视频第一帧
   qtFaststartFile: d:/tools/video/qt-faststart/qt-faststart.exe
+  
+# 文件管理是否启用租户模式
+filemanager:
+  useCorpModel: false
   
 #======================================#
 #========== Message settings ==========#
