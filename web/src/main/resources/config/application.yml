@@ -9,7 +9,7 @@ companyName: ThinkGem
 
 # 产品版本、版权年份
 productVersion: V4.2
-copyrightYear: 2020
+copyrightYear: 2021
 
 #是否演示模式
 demoMode: false
@@ -25,10 +25,11 @@ server:
     context-path: /js
   tomcat:
     uri-encoding: UTF-8
+    #maxHttpFormPostSize: -1
     
-  # 将请求协议转换为 https
+  # 当 Nginx 为 https，tomcat 为 http 时，设置该选项为 true
   schemeHttps: false
-    
+  
 #======================================#
 #========== Database sttings ==========#
 #======================================#
@@ -97,9 +98,9 @@ jdbc:
 #  
 #    # 初始化连接数
 #    init: 1
-#    # 最小连接数
+#    # 最小空闲连接数
 #    minIdle: 3
-#    # 最大连接数
+#    # 最大激活连接数
 #    maxActive: 20
 #
 #    # 获取连接等待超时时间，单位毫秒（1分钟）（4.0.6+）
@@ -222,8 +223,11 @@ logging:
 # 分页相关
 #page:
 #
-#  # 分页默认大小
+#  # 默认每页显示的数据条数
 #  pageSize: 20
+#  
+#  # 每页最大条数，防止分页过大导致系统缓慢或内存溢出
+#  maxPageSize: 999
 
 # 用户相关
 #user:
@@ -479,20 +483,21 @@ shiro:
 #  # 是否允许嵌入到外部网站iframe中（true：不限制，false：不允许）
 #  isAllowExternalSiteIframe: true
 #  
-#  # 是否允许跨域访问 CORS，如果允许，设置允许的域名，全部域名设置*号，如果不允许，此设置应该为空
+#  # 是否允许跨域访问 CORS，如果允许，设置允许的域名。当设置'*'号全部域名时，accessControlAllowCredentials应该设置为false。
+#  # v4.2.3 开始支持多个域名和模糊匹配，例如：http://*.jeesite.com,http://*.jeesite.net
 ##  accessControlAllowOrigin: http://demo.jeesite.com
 ##  accessControlAllowOrigin: '*'
 #
-# # 允许跨域访问时 CORS，可以使用的方法和标头
-#  accessControlAllowMethods: GET, POST, OPTIONS
-#  accessControlAllowHeaders: Origin, No-Cache, X-Requested-With, If-Modified-Since, Pragma, Last-Modified, Cache-Control, Expires, Content-Type, X-E4M-With
+#  # 允许跨域访问时 CORS，可以使用的方法和标头
+##  accessControlAllowMethods: GET, POST, OPTIONS
+##  accessControlAllowHeaders: Origin, No-Cache, X-Requested-With, If-Modified-Since, Pragma, Last-Modified, Cache-Control, Expires, Content-Type, X-E4M-With
 #
-#  # 是否允许接收跨域的Cookie凭证数据 CORS
-##  accessControlAllowCredentials: true
-#
-#  # 允许的网站来源地址，不设置为全部地址（避免一些跨站点请求伪造 CSRF）
-#  allowReferers: http://127.0.0.1,http://localhost
-#  allowReferers: ~
+#  # 是否允许接收跨域的Cookie凭证数据 CORS，当设置为true时，accessControlAllowOrigin不能设置为'*'。
+##  accessControlAllowCredentials: false
+#  
+#  # 允许的网站来源地址，不设置为全部地址（避免一些跨站点请求伪造 CSRF、防盗链）
+##  allowReferers: http://127.0.0.1,http://localhost
+##  allowReferers: ~
 #
 #  # 是否在登录后生成新的Session（默认false）
 #  isGenerateNewSessionAfterLogin: false
